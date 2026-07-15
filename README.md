@@ -1,4 +1,4 @@
-# FPGA-Color-Tracking
+# FPGA Color Tracking
 
 ## Picture Converter
 **Step 1**: Put .png/jpg in `input`.  
