@@ -26,7 +26,7 @@ Convert:
 **Step 2**: Open Modelsim -> compile all -> run tb... for Tracking Center.  
 <img width="941" height="207" alt="image" src="https://github.com/user-attachments/assets/20713e6d-2674-4b32-aefc-837ede0760fe" />  
 
-#About
+# About
 This project uses the FPGA Tang Nano 9k as a model and the OV7670 as a camera.  
 AI used.  
 
