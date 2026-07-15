@@ -21,40 +21,8 @@ Convert:
 <img width="640" height="480" alt="result" src="https://github.com/user-attachments/assets/3661fc34-ac6d-46f6-ba82-fbc32f6f5694" />    
 
 ## Simulation
-Step 1: Use `image_rgb.txt` for testing.  
+**Step 1**: Use `image_rgb.txt` for testing.  
+<img width="815" height="191" alt="image" src="https://github.com/user-attachments/assets/9b2aea97-14b8-4f84-b3fb-7e196fe5b2ee" />  
 Step 2: Open Modelsim -> compile all -> run tb... for Tracking Center.  
+<img width="941" height="207" alt="image" src="https://github.com/user-attachments/assets/20713e6d-2674-4b32-aefc-837ede0760fe" />  
 
-## Hardware
-Hardware: OV7670 and Tang Nano 9k  
-
-+-----------------------------------------------------------------------------+
-|                               tb_image_process                              |
-|                                 (Testbench)                                 |
-|                                                                             |
-|  +------------------+                   +--------------------------------+  |
-|  |  image_rgb.txt   |                   |       threshold_out.txt        |  |
-|  | (File ảnh nguồn) |                   |      (File kết quả nhị phân)   |  |
-|  +--------+---------+                   +----------------▲---------------+  |
-|           |                                              |                  |
-|           | ($readmemh)                                  | ($fdisplay)      |
-|           ▼                                              |                  |
-|  +--------+---------+                                    |                  |
-|  |    image_mem     |                                    |                  |
-|  | (Bộ nhớ tạm thời)|                                    |                  |
-|  +--------+---------+                                    |                  |
-|           |                                              |                  |
-|           | pixel_data (16-bit)                          | mask (1-bit)     |
-|           | & pixel_valid                                | (khi mask_valid) |
-|           ▼                                              |                  |
-|     +-----+----------------------------------------------+-----+            |
-|     |                        Khối DUT                          |            |
-|     |                (rgb565_to_hsv_threshold)                 |            |
-|     +----------------------------------------------------------+            |
-|     |  Tín hiệu Vào (Inputs):      |  Tín hiệu Ra (Outputs):   |            |
-|     |   - clk                      |   - hue [7:0]             |            |
-|     |   - rst                      |   - sat [7:0]             |            |
-|     |   - rgb565 [15:0]            |   - val [7:0]             |            |
-|     |   - pixel_valid              |   - mask                  |            |
-|     |                              |   - mask_valid            |            |
-|     +----------------------------------------------------------+            |
-+-----------------------------------------------------------------------------+
