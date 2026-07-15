@@ -23,6 +23,10 @@ Convert:
 ## Simulation
 **Step 1**: Use `image_rgb.txt` for testing.  
 <img width="815" height="191" alt="image" src="https://github.com/user-attachments/assets/9b2aea97-14b8-4f84-b3fb-7e196fe5b2ee" />  
-Step 2: Open Modelsim -> compile all -> run tb... for Tracking Center.  
+**Step 2**: Open Modelsim -> compile all -> run tb... for Tracking Center.  
 <img width="941" height="207" alt="image" src="https://github.com/user-attachments/assets/20713e6d-2674-4b32-aefc-837ede0760fe" />  
+
+#About
+This project uses the FPGA Tang Nano 9k as a model and the OV7670 as a camera.  
+AI used.  
 
