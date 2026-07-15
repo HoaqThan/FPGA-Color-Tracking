@@ -13,12 +13,12 @@
 <img width="1308" height="301" alt="image" src="https://github.com/user-attachments/assets/a457bb44-5a7f-435b-bb5e-46fd246890e9" />  
 <img width="487" height="186" alt="image" src="https://github.com/user-attachments/assets/0c0b7633-6d89-4b49-a3f7-78c3791fcbe6" />  
 
-**Compare**:
-Origin:
+**Compare**:  
+Origin:  
 <img width="474" height="355" alt="sunrise" src="https://github.com/user-attachments/assets/09a31c9c-4738-4cfb-a0a7-ead0315a89e6" />  
 
-Convert:
-<img width="640" height="480" alt="result" src="https://github.com/user-attachments/assets/3661fc34-ac6d-46f6-ba82-fbc32f6f5694" />  
+Convert:  
+<img width="640" height="480" alt="result" src="https://github.com/user-attachments/assets/3661fc34-ac6d-46f6-ba82-fbc32f6f5694" />    
 
 ## Simulation
 Step 1: Use `image_rgb.txt` for testing.  
