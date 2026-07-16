@@ -1,0 +1,42 @@
+﻿name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - docs/**
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install Pillow; fi
+
+      - name: Run image conversion (if available)
+        run: |
+          if [ -f "Picture Convertor/image_process.py" ]; then python "Picture Convertor/image_process.py" || true; else echo "image_process.py not found"; fi
+
+      - name: Run restore (if available)
+        run: |
+          if [ -f "Picture Convertor/restore_image.py" ]; then python "Picture Convertor/restore_image.py" || true; else echo "restore_image.py not found"; fi
+
+  # Optional: hardware or simulation job using self-hosted runner
+  hardware-test:
+    if: false
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run hardware integration (example)
+        run: |
+          echo "Configure and run hardware scripts on self-hosted runner"
