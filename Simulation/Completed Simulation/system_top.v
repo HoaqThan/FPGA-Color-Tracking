@@ -6,38 +6,38 @@ module system_top #(
 ) (
     // --- System Clocks & Reset ---
     input  wire        sys_clk,     // Xung nh?p h? th?ng (VD: 25MHz ho?c 48MHz)
-    input  wire        sys_rst,     // Reset h? th?ng (TÌch c?c m?c cao)
+    input  wire        sys_rst,     // Reset h? th?ng (T√≠ch c?c m?c cao)
 
     // --- Giao ti?p Camera OV7670 ---
     output wire        cam_xclk,    // Xung c?p cho Camera (24MHz)
     output wire        cam_sioc,    // Xung nh?p I2C/SCCB
     inout  wire        cam_siod,    // D? li?u I2C/SCCB
     input  wire        cam_pclk,    // Xung pixel t? Camera tr? v?
-    input  wire        cam_rst,     // Ch‚n reset Camera
-    input  wire        cam_vsync,   // ??ng b? khung hÏnh (Frame sync)
-    input  wire        cam_href,    // ??ng b? h‡ng (Line sync)
+    input  wire        cam_rst,     // Ch√¢n reset Camera
+    input  wire        cam_vsync,   // ??ng b? khung hÃÅnh (Frame sync)
+    input  wire        cam_href,    // ??ng b? h√†ng (Line sync)
     input  wire [7:0]  cam_data,    // D? li?u pixel (8-bit)
 
-    // --- Inputs t? ng??i d˘ng ---
-    input  wire [1:0]  color_sel,   // D‡nh cho vi?c ch?n m‡u sau n‡y (00, 01, 10, 11)
+    // --- Inputs t? ng??i d√πng ---
+    input  wire [1:0]  color_sel,   // D√†nh cho vi?c ch?n m√†u sau n√†y (00, 01, 10, 11)
 
-    // --- K?t qu? x? l˝ (Tracking Outputs) ---
+    // --- K?t qu? x? l∆∞ (Tracking Outputs) ---
     output wire [9:0]  final_x_center,
     output wire [9:0]  final_y_center,
     output wire        final_object_valid,
     output wire        final_error_flag,
 
-    // --- Giao ti?p VGA (T˘y ch?n hi?n th? sau n‡y) ---
+    // --- Giao ti?p VGA (T√πy ch?n hi?n th? sau n√†y) ---
     output wire        vga_hsync,
     output wire        vga_vsync,
     output wire [15:0] vga_rgb
 );
 
     // =========================================================================
-    // 1. T?O XUNG V¿ C?U HÃNH CAMERA (SCCB)
+    // 1. T?O XUNG V√Ä C?U HÃÄNH CAMERA (SCCB)
     // =========================================================================
     camera_xclk_24m #(
-        .CLK_IN_HZ(48000000) // Khai b·o t?n s? sys_clk th?c t? trÍn board c?a b?n
+        .CLK_IN_HZ(48000000) // Khai b√°o t?n s? sys_clk th?c t? tr√™n board c?a b?n
     ) xclk_gen (
         .clk_in(sys_clk),
         .rst(sys_rst),
@@ -69,7 +69,7 @@ module system_top #(
     wire        sys_line_start;
 
     ov7670_rgb565_cdc #(
-        .FIFO_ADDR_WIDTH(10), // T?ng size FIFO ?? an to‡n khi simulation
+        .FIFO_ADDR_WIDTH(10), // T?ng size FIFO ?? an to√†n khi simulation
         .VSYNC_ACTIVE_HIGH(1'b1)
     ) camera_cdc (
         .cam_pclk(cam_pclk),
@@ -82,7 +82,7 @@ module system_top #(
         
         .sys_clk(sys_clk),
         .sys_rst(sys_rst),
-        .sys_rd_en(1'b1),     // LuÙn ??c d? li?u t? FIFO khi cÛ th?
+        .sys_rd_en(1'b1),     // Lu√¥n ??c d? li?u t? FIFO khi c√≥ th?
         .sys_pixel(sys_pixel),
         .sys_pixel_valid(sys_pixel_valid),
         .sys_frame_start(sys_frame_start),
@@ -92,13 +92,13 @@ module system_top #(
     );
 
     // =========================================================================
-    // 3. KH?I L?C M¿U HSV
+    // 3. KH?I L?C M√ÄU HSV
     // =========================================================================
     wire [7:0] hsv_h, hsv_s, hsv_v;
     wire       color_mask, color_mask_valid;
     wire       frame_start_d, line_start_d;
 
-    // Gi? nguyÍn c·c thÙng s? HSV m?c ??nh c?a b?n
+    // Gi? nguy√™n c√°c th√¥ng s? HSV m?c ??nh c?a b?n
     color_tracking_hsv_stage #(
         .H_MIN(8'd0),  .H_MAX(8'd10),
         .S_MIN(8'd80), .S_MAX(8'd255),
@@ -121,7 +121,7 @@ module system_top #(
     );
 
     // =========================================================================
-    // 4. B? ??M T?A ?? & TÃM KHUNG BAO (BOUNDING BOX)
+    // 4. B? ??M T?A ?? & TÃÄM KHUNG BAO (BOUNDING BOX)
     // =========================================================================
     wire [9:0] x_cnt, y_cnt;
     xy_counter xy_cnt_inst (
@@ -149,7 +149,7 @@ module system_top #(
     );
 
     // =========================================================================
-    // 5. TÕNH T¬M & VŸNG AN TO¿N
+    // 5. T√çNH T√ÇM & V√ôNG AN TO√ÄN
     // =========================================================================
     wire [9:0] cur_x_center, cur_y_center;
     center_calc calc_inst (
@@ -161,7 +161,7 @@ module system_top #(
         .y_center(cur_y_center)
     );
 
-    // Ch?t (Latch) t?a ?? cu?i c˘ng khi k?t th˙c 1 Frame hÏnh
+    // Ch?t (Latch) t?a ?? cu?i c√πng khi k?t th√∫c 1 Frame hÃÅnh
     reg [9:0] x_center_reg, y_center_reg;
     reg       obj_valid_reg;
 
@@ -174,8 +174,8 @@ module system_top #(
             x_center_reg  <= cur_x_center;
             y_center_reg  <= cur_y_center;
             
-            // N?u cÛ v?t th? (xmax > xmin), g·n c? h?p l? (Valid)
-            if (xmax >= xmin && ymax >= ymin && xmax != 10'd0)
+            // N?u c√≥ v?t th? (h?p bao h?p l?), g√°n c? h?p l? (Valid)
+            if (xmax >= xmin && ymax >= ymin)
                 obj_valid_reg <= 1'b1;
             else
                 obj_valid_reg <= 1'b0;
@@ -193,13 +193,13 @@ module system_top #(
     );
 
     // =========================================================================
-    // 6. XU?T TÕN HI?U VGA (T˘y ch?n)
+    // 6. XU?T T√çN HI?U VGA (T√πy ch?n)
     // =========================================================================
     wire vga_blank;
     wire [10:0] pixel_x, pixel_y;
     
     vga_controller vga_inst (
-        .vga_clk(sys_clk), // N?u d˘ng th?c t?, vga_clk ph?i l‡ 25.175 MHz
+        .vga_clk(sys_clk), // N?u d√πng th?c t?, vga_clk ph?i l√† 25.175 MHz
         .rst(sys_rst),
         .vga_hsync(vga_hsync),
         .vga_vsync(vga_vsync),
@@ -208,7 +208,7 @@ module system_top #(
         .pixel_y(pixel_y)
     );
     
-    // T?m th?i g·n m‡u ?en cho VGA (Do ch?a cÛ b? nh? RAM l?u ?nh xu?t m‡n hÏnh)
+    // T?m th?i g√°n m√†u ?en cho VGA (Do ch?a c√≥ b? nh? RAM l?u ?nh xu?t m√†n hÃÅnh)
     assign vga_rgb = 16'h0000;
 
 endmodule
