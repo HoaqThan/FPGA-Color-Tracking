@@ -36,6 +36,7 @@ reg [15:0] pixel_data;
 
 integer pixel_index;
 integer outfile;
+reg [1:0] flush_cnt;
 //====================================================
 // Output
 //====================================================
@@ -118,6 +119,7 @@ begin
 
         pixel_index <= 0;
         pixel_data  <= 16'd0;
+        flush_cnt   <= 2'd0;
 
     end
 
@@ -135,6 +137,13 @@ begin
                      mask);
 
             pixel_index <= pixel_index + 1;
+
+        end
+
+        else if (flush_cnt < 3)
+        begin
+
+            flush_cnt <= flush_cnt + 1;
 
         end
 
