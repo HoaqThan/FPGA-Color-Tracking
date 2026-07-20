@@ -378,14 +378,19 @@ Safe --> Output
 2. Read the file `input/image_rgb.txt` (hex format, one RGB565 pixel per line) into the `image_mem` array using `$readmemh`. This file must contain exactly `640 x 480 = 307,200` lines.
 3. After releasing reset, the testbench streams one frame (Frame 1): for each pixel, it drives `cam_href = 1` and pushes the high byte, then the low byte of the pixel, onto `cam_data` on each falling edge of `cam_pclk`.
 4. A second, shortened frame (Frame 2) is generated solely to trigger a new `frame_start` pulse, which latches the center coordinates computed from Frame 1 onto the `final_*` output ports.
-5. The console prints the final result: the center coordinates (`final_x_center`, `final_y_center`) and the safe-zone status (`final_error_flag`) if `final_object_valid = 1`; otherwise, it prints "NO OBJECT FOUND".
+5. The console prints the final result: the center coordinates (`final_x_center`, `final_y_center`) and the safe-zone status (`final_error_flag`) if `final_object_valid = 1`; otherwise, it prints "KHONG TIM THAY VAT THE!".
 
-**Example**
-<img width="474" height="355" alt="OIP" src="https://github.com/user-attachments/assets/e30252f2-daae-4e9c-af23-50a76fdf6f75" />
+**Example**   
+**Case 1**: If the object is in the safe zone
+<img width="474" height="355" alt="OIP" src="https://github.com/user-attachments/assets/e30252f2-daae-4e9c-af23-50a76fdf6f75" />  
 
-<img width="1901" height="739" alt="image" src="https://github.com/user-attachments/assets/d819cee4-6c03-4d4c-bdd7-2ca26f8b16c1" />
+<img width="1901" height="739" alt="image" src="https://github.com/user-attachments/assets/d819cee4-6c03-4d4c-bdd7-2ca26f8b16c1" />  
 
+**Case 2**: If the object is not found
 
+<img width="204" height="195" alt="Virtuosa" src="https://github.com/user-attachments/assets/b7af6b6c-f298-4c5e-af3b-693d2b04aae9" />  
+
+<img width="1279" height="732" alt="image" src="https://github.com/user-attachments/assets/9cc7fa74-7647-499c-9e05-9703fef8ac8b" />  
 
 ## 8.2 Picture Converter Scripts
 
