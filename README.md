@@ -433,4 +433,17 @@ The FPGA Color Tracking system implements a complete real-time, color-based obje
 
 ---
 
+# 11. References
+
+* **[1] Gowin Semiconductor Corp.**, *"GW1NR Series of FPGA Products Data Sheet"*, Guangzhou, China, DS117-1.5E, 2024.  
+* **[2] OmniVision Technologies, Inc.**, *"OV7670/OV7171 CMOS VGA Color Digital Camera Implementation Guide"*, Santa Clara, CA, USA, Version 1.4, 2006.  
+* **[3] C. E. Cummings**, *"Simulation and Synthesis Techniques for Asynchronous FIFO Design"*, in *Proceedings of Synopsys Users Group (SNUG) Conference*, San Jose, CA, USA, 2002, pp. 1–23.  
+* **[4] J. Yuen**, *"Clock Domain Crossing (CDC) Design & Verification Techniques Using SystemVerilog"*, *IEEE Transactions on Very Large Scale Integration (VLSI) Systems*, 2019.
+* **[5] A. R. Smith**, *"Color Gamut Transform Pairs"*, in *Proceedings of the 5th Annual Conference on Computer Graphics and Interactive Techniques (SIGGRAPH '78)*, Atlanta, GA, USA, 1978, pp. 12–19.  
+* **[6] R. C. Gonzalez and R. E. Woods**, *Digital Image Processing*, 4th ed. Upper Saddle River, NJ, USA: Pearson, 2018.  
+* **[7] Video Electronics Standards Association (VESA)**, *"VGA Signal Timing Standard for 640x480 at 60Hz"*, San Jose, CA, USA, Reference Guidelines, 2001.  
+  
+
+---
+
 **End of Documentation**
