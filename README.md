@@ -381,7 +381,8 @@ Safe --> Output
 5. The console prints the final result: the center coordinates (`final_x_center`, `final_y_center`) and the safe-zone status (`final_error_flag`) if `final_object_valid = 1`; otherwise, it prints "KHONG TIM THAY VAT THE!".
 
 **Example**   
-**Case 1**: If the object is in the safe zone
+**Case 1**: If the object is in the safe zone  
+
 <img width="474" height="355" alt="OIP" src="https://github.com/user-attachments/assets/e30252f2-daae-4e9c-af23-50a76fdf6f75" />  
 
 <img width="1901" height="739" alt="image" src="https://github.com/user-attachments/assets/d819cee4-6c03-4d4c-bdd7-2ca26f8b16c1" />  
