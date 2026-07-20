@@ -1,9 +1,5 @@
 # FPGA Color Tracking
 
-> **Document ID:** 02
-> **Project:** FPGA Color Tracking
-> **Document Type:** Project Overview & Technical Documentation
-
 ---
 
 # 1. Overview
@@ -50,7 +46,7 @@ FPGA-Color-Tracking
 └── README.md
 ```
 
-> **Note:** The subfolders under `Simulation/` each contain a "slice" of modules used to test individual blocks in isolation. The **`Completed Simulation`** folder contains the fully integrated RTL (`system_top.v` + `tb_system_top.v`) used to simulate the whole system.
+> **Note:** The subfolders under `Simulation` each contain a "slice" of modules used to test individual blocks in isolation. The **`Completed Simulation`** folder contains the fully integrated RTL (`system_top.v` + `tb_system_top.v`) used to simulate the whole system.
 
 ```mermaid
 graph TD
@@ -382,9 +378,9 @@ Safe --> Output
 2. Read the file `input/image_rgb.txt` (hex format, one RGB565 pixel per line) into the `image_mem` array using `$readmemh`. This file must contain exactly `640 x 480 = 307,200` lines.
 3. After releasing reset, the testbench streams one frame (Frame 1): for each pixel, it drives `cam_href = 1` and pushes the high byte then the low byte of the pixel onto `cam_data` on each falling edge of `cam_pclk`.
 4. A second, shortened frame (Frame 2) is generated solely to trigger a new `frame_start` pulse, which latches the center coordinates computed from Frame 1 onto the `final_*` output ports.
-5. The console prints the final result: the center coordinates (`final_x_center`, `final_y_center`) and the safe-zone status (`final_error_flag`) if `final_object_valid = 1`; otherwise it prints "NO OBJECT FOUND".
+5. The console prints the final result: the center coordinates (`final_x_center`, `final_y_center`) and the safe-zone status (`final_error_flag`) if `final_object_valid = 1`; otherwise, it prints "NO OBJECT FOUND".
 
-## 8.2 Picture Convertor Scripts
+## 8.2 Picture Converter Scripts
 
 - **`image_process.py`**: reads a sample image (jpg/png) from `Picture Convertor/input/`, resizes it to exactly 640x480, converts each pixel to RGB565, and writes the result to `Picture Convertor/output/image_rgb.txt` — the same file loaded by `tb_system_top.v`.
 - **`restore_image.py`**: reads back simulation output (or RGB565 image data) and reconstructs a viewable image for visual verification.
@@ -420,7 +416,7 @@ Restore --> ViewImg[Reconstructed image for comparison]
 
 # 10. Conclusion
 
-The FPGA Color Tracking system implements a complete real-time, color-based object-tracking pipeline: from camera configuration, pixel capture and clock-domain synchronization, through HSV color thresholding, to bounding-box tracking, center calculation, and safe-zone checking. The clear modular architecture — each RTL block handling one independent function, testable on its own in the `Simulation/*` subfolders — makes it convenient to verify each part before integrating the full system through `system_top.v`. VGA image output remains a future development direction, requiring a frame buffer to be added in order to display the processed result on an actual screen.
+The FPGA Color Tracking system implements a complete real-time, color-based object-tracking pipeline: from camera configuration, pixel capture, and clock-domain synchronization, through HSV color thresholding, to bounding-box tracking, center calculation, and safe-zone checking. The clear modular architecture — each RTL block handling one independent function, testable on its own in the `Simulation/*` subfolders — makes it convenient to verify each part before integrating the full system through `system_top.v`. VGA image output remains a future development direction, requiring a frame buffer to be added in order to display the processed result on an actual screen.
 
 ---
 
