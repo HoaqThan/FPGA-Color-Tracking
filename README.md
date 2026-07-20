@@ -6,7 +6,7 @@
 
 FPGA Color Tracking is a real-time, color-based object tracking system built around the **OV7670** camera and a **Tang Nano 9K** FPGA. The system receives an RGB565 pixel stream from the camera, applies an HSV color threshold to separate the target object from the background, then computes a bounding box and the object's center coordinates, and raises a warning whenever the object leaves a predefined Safe Zone.
 
-The repository also includes a set of Python scripts used to generate RGB565 test image vectors for ModelSim simulation, and to reconstruct an image from the simulation output for visual verification.
+The repository also includes a set of Python scripts used to generate RGB565 test image vectors for ModelSim simulation and to reconstruct an image from the simulation output for visual verification.
 
 ## Table of Contents
 - [1. Overview](#1-overview)
@@ -376,9 +376,16 @@ Safe --> Output
 
 1. Initialize `sys_clk` (50MHz, 20ns period) and `cam_pclk` (~24MHz, ~41.6ns period).
 2. Read the file `input/image_rgb.txt` (hex format, one RGB565 pixel per line) into the `image_mem` array using `$readmemh`. This file must contain exactly `640 x 480 = 307,200` lines.
-3. After releasing reset, the testbench streams one frame (Frame 1): for each pixel, it drives `cam_href = 1` and pushes the high byte then the low byte of the pixel onto `cam_data` on each falling edge of `cam_pclk`.
+3. After releasing reset, the testbench streams one frame (Frame 1): for each pixel, it drives `cam_href = 1` and pushes the high byte, then the low byte of the pixel, onto `cam_data` on each falling edge of `cam_pclk`.
 4. A second, shortened frame (Frame 2) is generated solely to trigger a new `frame_start` pulse, which latches the center coordinates computed from Frame 1 onto the `final_*` output ports.
 5. The console prints the final result: the center coordinates (`final_x_center`, `final_y_center`) and the safe-zone status (`final_error_flag`) if `final_object_valid = 1`; otherwise, it prints "NO OBJECT FOUND".
+
+**Example**
+<img width="474" height="355" alt="OIP" src="https://github.com/user-attachments/assets/e30252f2-daae-4e9c-af23-50a76fdf6f75" />
+
+<img width="1901" height="739" alt="image" src="https://github.com/user-attachments/assets/d819cee4-6c03-4d4c-bdd7-2ca26f8b16c1" />
+
+
 
 ## 8.2 Picture Converter Scripts
 
