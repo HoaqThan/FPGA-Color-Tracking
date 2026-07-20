@@ -8,9 +8,9 @@
 
 # 1. Overview
 
-FPGA Color Tracking là hệ thống bám bắt vật thể theo màu (color-based object tracking) thời gian thực, sử dụng camera **OV7670** làm nguồn ảnh và FPGA **Tang Nano 9K** làm lõi xử lý. Hệ thống nhận luồng pixel RGB565 từ camera, lọc theo ngưỡng màu HSV để tách vật thể khỏi nền, sau đó tính toán khung bao (bounding box) và tọa độ tâm vật thể, đồng thời cảnh báo khi vật thể ra khỏi vùng an toàn (Safe Zone) đã định nghĩa.
+FPGA Color Tracking is a real-time, color-based object tracking system built around the **OV7670** camera and a **Tang Nano 9K** FPGA. The system receives an RGB565 pixel stream from the camera, applies an HSV color threshold to separate the target object from the background, then computes a bounding box and the object's center coordinates, and raises a warning whenever the object leaves a predefined Safe Zone.
 
-Repo cũng bao gồm bộ script Python hỗ trợ tạo vector ảnh test (RGB565) để mô phỏng bằng ModelSim và khôi phục ảnh từ dữ liệu mô phỏng để kiểm chứng trực quan.
+The repository also includes a set of Python scripts used to generate RGB565 test image vectors for ModelSim simulation, and to reconstruct an image from the simulation output for visual verification.
 
 ## Table of Contents
 - [1. Overview](#1-overview)
@@ -32,15 +32,15 @@ Repo cũng bao gồm bộ script Python hỗ trợ tạo vector ảnh test (RGB5
 FPGA-Color-Tracking
 │
 ├── Picture Convertor/
-│   ├── image_process.py        # Chuyển ảnh (jpg/png) -> image_rgb.txt (RGB565)
-│   ├── restore_image.py        # Khôi phục ảnh từ file kết quả mô phỏng
-│   ├── input/                  # Ảnh mẫu đầu vào
-│   ├── output/                 # image_rgb.txt sinh ra cho testbench
+│   ├── image_process.py        # Converts an image (jpg/png) -> image_rgb.txt (RGB565)
+│   ├── restore_image.py        # Reconstructs an image from simulation output data
+│   ├── input/                  # Sample input images
+│   ├── output/                 # image_rgb.txt generated for the testbench
 │   └── modelsim/
 │
 ├── Simulation/
 │   ├── Color Tracking HSV/     # color_tracking_hsv_stage.v, rgb565_to_hsv_threshold.v
-│   ├── Completed Simulation/   # Toàn bộ RTL + testbench tích hợp (system_top)
+│   ├── Completed Simulation/   # Full integrated RTL + testbench (system_top)
 │   ├── Configurator/           # ov7670_configurator.v, ov7670_init_rom.v, ov7670_sccb_master.v
 │   ├── Pulse Clock/            # camera_xclk_24m.v
 │   ├── Sync Clock/             # async_fifo_gray.v, ov7670_rgb565_cdc.v
@@ -50,7 +50,7 @@ FPGA-Color-Tracking
 └── README.md
 ```
 
-> **Ghi chú:** Các thư mục con trong `Simulation/` chứa các "lát cắt" module để test độc lập từng khối; thư mục **`Completed Simulation`** chứa bản RTL tích hợp đầy đủ (`system_top.v` + `tb_system_top.v`) dùng để mô phỏng toàn hệ thống.
+> **Note:** The subfolders under `Simulation/` each contain a "slice" of modules used to test individual blocks in isolation. The **`Completed Simulation`** folder contains the fully integrated RTL (`system_top.v` + `tb_system_top.v`) used to simulate the whole system.
 
 ```mermaid
 graph TD
@@ -72,7 +72,7 @@ Simulation --> VGAController[VGA Controller]
 
 # 3. System Overview
 
-Hệ thống hoạt động theo chuỗi xử lý: **cấu hình camera → thu nhận pixel → chuyển miền xung nhịp → lọc màu HSV → đếm tọa độ & tìm khung bao → tính tâm vật thể → kiểm tra vùng an toàn → (tùy chọn) xuất VGA**.
+The system follows this processing chain: **camera configuration → pixel capture → clock-domain crossing → HSV color filtering → coordinate counting & bounding-box tracking → center calculation → safe-zone check → (optional) VGA output**.
 
 ```mermaid
 flowchart LR
@@ -112,44 +112,44 @@ Clk["camera_xclk_24m"] -.XCLK 24MHz.-> Cam
 HSV -.optional.-> VGA["vga_controller"]
 ```
 
-**Mô tả luồng:**
-- **Cấu hình camera:** `ov7670_configurator` nạp bộ giá trị thanh ghi từ `ov7670_init_rom` qua giao thức SCCB (`ov7670_sccb_master`) để thiết lập camera ở chế độ VGA 640x480, RGB565.
-- **Thu nhận & CDC:** `ov7670_rgb565_cdc` ghép 2 byte pixel từ `cam_pclk` domain, đẩy qua `async_fifo_gray` (FIFO bất đồng bộ Gray-code) sang `sys_clk` domain, tạo tín hiệu `sys_pixel`, `sys_pixel_valid`, `sys_frame_start`, `sys_line_start`.
-- **Lọc màu HSV:** `color_tracking_hsv_stage` gọi `rgb565_to_hsv_threshold` để tách kênh R/G/B từ RGB565, tính H/S/V rồi so ngưỡng, sinh ra `color_mask` (1 nếu pixel thuộc màu mục tiêu).
-- **Đếm tọa độ & khung bao:** `xy_counter` đếm vị trí pixel hiện tại trong khung hình; `bounding_box` cập nhật `xmin/xmax/ymin/ymax` khi gặp pixel thuộc vật thể.
-- **Tính tâm:** `center_calc` lấy trung bình cộng để ra `x_center`, `y_center`; kết quả được chốt (latch) mỗi khi có `frame_start` mới.
-- **Vùng an toàn:** `safe_zone` so tọa độ tâm với vùng an toàn cố định (200x200 pixel ở giữa khung hình), xuất `error_flag` nếu vật thể ra ngoài vùng.
-- **VGA (tùy chọn):** `vga_controller` sinh tín hiệu `hsync/vsync` chuẩn 640x480@60Hz để hiển thị; hiện `vga_rgb` đang gán cứng màu đen do chưa có bộ nhớ khung hình.
+**Flow description:**
+- **Camera configuration:** `ov7670_configurator` loads a sequence of register values from `ov7670_init_rom` over the SCCB protocol (`ov7670_sccb_master`) to put the camera into VGA 640x480, RGB565 mode.
+- **Capture & CDC:** `ov7670_rgb565_cdc` combines two consecutive bytes from the `cam_pclk` domain into one RGB565 pixel, tags it with `frame_start`/`line_start` flags, and pushes it into `async_fifo_gray` (an asynchronous, Gray-code FIFO), which safely transfers the data to the `sys_clk` domain, producing `sys_pixel`, `sys_pixel_valid`, `sys_frame_start`, and `sys_line_start`.
+- **HSV color filtering:** `color_tracking_hsv_stage` calls `rgb565_to_hsv_threshold`, which splits R/G/B channels from RGB565, computes H/S/V, and compares them against configured thresholds to produce `color_mask` (`1` if the pixel belongs to the target color).
+- **Coordinate counting & bounding box:** `xy_counter` counts the current pixel position within the frame; `bounding_box` updates `xmin/xmax/ymin/ymax` whenever it encounters a pixel that belongs to the object.
+- **Center calculation:** `center_calc` averages the bounding-box edges to produce `x_center`, `y_center`; the final center is latched every time a new `frame_start` arrives.
+- **Safe zone:** `safe_zone` compares the center coordinates against a fixed 200x200-pixel safe area in the middle of the frame, and raises `error_flag` if the object leaves that area.
+- **VGA (optional):** `vga_controller` generates standard 640x480@60Hz `hsync`/`vsync` signals for display purposes; `vga_rgb` is currently hard-wired to black since there is no frame buffer yet to display the processed image.
 
 ---
 
 # 4. Module Index
 
-| # | Module | File | Thư mục | Vai trò |
-|---|--------|------|---------|---------|
-| 1 | system_top | system_top.v | Completed Simulation | Module top cấp cao nhất, kết nối toàn bộ hệ thống |
-| 2 | camera_xclk_24m | camera_xclk_24m.v | Pulse Clock | Sinh xung XCLK 24MHz cấp cho camera OV7670 |
-| 3 | ov7670_configurator | ov7670_configurator.v | Configurator | Điều khiển quy trình nạp cấu hình camera qua SCCB |
-| 4 | ov7670_init_rom | ov7670_init_rom.v | Configurator | ROM chứa danh sách 133 cặp (địa chỉ thanh ghi, giá trị) cấu hình camera VGA/RGB565 |
-| 5 | ov7670_sccb_master | ov7670_sccb_master.v | Configurator | Master giao tiếp SCCB/I2C (chỉ ghi) tới camera |
-| 6 | ov7670_rgb565_cdc | ov7670_rgb565_cdc.v | Sync Clock | Chuyển đổi byte stream từ `cam_pclk` sang pixel 16-bit ở `sys_clk` |
-| 7 | async_fifo_gray | async_fifo_gray.v | Sync Clock | FIFO 2 miền xung nhịp bất đồng bộ (Gray-code pointer) dùng cho CDC |
-| 8 | color_tracking_hsv_stage | color_tracking_hsv_stage.v | Color Tracking HSV | Tầng tích hợp: pixel stream → mask màu HSV |
-| 9 | rgb565_to_hsv_threshold | rgb565_to_hsv_threshold.v | Color Tracking HSV | Tách kênh RGB565, tính H/S/V và so ngưỡng màu |
-| 10 | xy_counter | xy_counter.v | Tracking Top | Đếm tọa độ (x, y) của pixel hiện tại trong khung hình |
-| 11 | bounding_box | bounding_box.v | Tracking Top | Theo dõi khung bao (xmin, xmax, ymin, ymax) của vật thể |
-| 12 | center_calc | center_calc.v | Tracking Top | Tính tọa độ tâm vật thể từ khung bao |
-| 13 | safe_zone | safe_zone.v | Tracking Top | Kiểm tra tâm vật thể có nằm trong vùng an toàn hay không |
-| 14 | tracking_top | tracking_top.v | Tracking Top | Module con gộp xy_counter + bounding_box + center_calc + safe_zone |
-| 15 | vga_controller | VGA_Controller.v | VGA Controller | Sinh tín hiệu quét VGA 640x480@60Hz |
-| 16 | tb_system_top | tb_system_top.v | Completed Simulation | Testbench mô phỏng toàn hệ thống, nạp ảnh test từ file `.txt` |
+| # | Module | File | Folder | Role |
+|---|--------|------|--------|------|
+| 1 | system_top | system_top.v | Completed Simulation | Top-level module connecting the entire system |
+| 2 | camera_xclk_24m | camera_xclk_24m.v | Pulse Clock | Generates the 24MHz XCLK fed to the OV7670 camera |
+| 3 | ov7670_configurator | ov7670_configurator.v | Configurator | Controls the camera configuration sequence over SCCB |
+| 4 | ov7670_init_rom | ov7670_init_rom.v | Configurator | ROM holding 133 (register address, value) pairs for VGA/RGB565 camera setup |
+| 5 | ov7670_sccb_master | ov7670_sccb_master.v | Configurator | Write-only SCCB/I2C master to the camera |
+| 6 | ov7670_rgb565_cdc | ov7670_rgb565_cdc.v | Sync Clock | Converts the `cam_pclk` byte stream into a 16-bit pixel stream on `sys_clk` |
+| 7 | async_fifo_gray | async_fifo_gray.v | Sync Clock | Asynchronous dual-clock FIFO (Gray-code pointers) used for the CDC path |
+| 8 | color_tracking_hsv_stage | color_tracking_hsv_stage.v | Color Tracking HSV | Integration stage: pixel stream → HSV color mask |
+| 9 | rgb565_to_hsv_threshold | rgb565_to_hsv_threshold.v | Color Tracking HSV | Splits RGB565 channels, computes H/S/V, and thresholds the color |
+| 10 | xy_counter | xy_counter.v | Tracking Top | Counts the (x, y) position of the current pixel in the frame |
+| 11 | bounding_box | bounding_box.v | Tracking Top | Tracks the object's bounding box (xmin, xmax, ymin, ymax) |
+| 12 | center_calc | center_calc.v | Tracking Top | Computes the object's center coordinates from the bounding box |
+| 13 | safe_zone | safe_zone.v | Tracking Top | Checks whether the object's center lies within the safe zone |
+| 14 | tracking_top | tracking_top.v | Tracking Top | Sub-module combining xy_counter + bounding_box + center_calc + safe_zone |
+| 15 | vga_controller | VGA_Controller.v | VGA Controller | Generates 640x480@60Hz VGA scan signals |
+| 16 | tb_system_top | tb_system_top.v | Completed Simulation | Testbench simulating the full system, loading test images from a `.txt` file |
 
 ## 4.1 External Files & Scripts
 
-| # | Filename | Vai trò | Mô tả |
-|---|----------|---------|-------|
-| 1 | image_process.py | Preprocessing | Đọc ảnh (jpg/png) trong `input/`, resize về 640x480, chuyển sang RGB565 và ghi ra `output/image_rgb.txt` |
-| 2 | restore_image.py | Postprocessing | Đọc file dữ liệu kết quả mô phỏng và khôi phục lại thành ảnh để so sánh trực quan |
+| # | Filename | Role | Description |
+|---|----------|------|--------------|
+| 1 | image_process.py | Preprocessing | Reads a sample image (jpg/png) from `input/`, resizes it to 640x480, converts it to RGB565, and writes it to `output/image_rgb.txt` |
+| 2 | restore_image.py | Postprocessing | Reads back simulation output data and reconstructs a viewable image for visual verification |
 
 ---
 
@@ -157,158 +157,158 @@ HSV -.optional.-> VGA["vga_controller"]
 
 ## 5.1 system_top
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | sys_clk | Input | 1-bit | Xung nhịp hệ thống (25MHz hoặc 48MHz) |
-| 2 | sys_rst | Input | 1-bit | Reset hệ thống (active-high) |
-| 3 | cam_xclk | Output | 1-bit | Xung cấp cho camera (24MHz) |
-| 4 | cam_sioc | Output | 1-bit | Xung nhịp SCCB/I2C |
-| 5 | cam_siod | Inout | 1-bit | Dữ liệu SCCB/I2C |
-| 6 | cam_pclk | Input | 1-bit | Xung pixel trả về từ camera |
-| 7 | cam_rst | Input | 1-bit | Chân reset camera |
-| 8 | cam_vsync | Input | 1-bit | Đồng bộ khung hình (Frame sync) |
-| 9 | cam_href | Input | 1-bit | Đồng bộ hàng (Line sync) |
-| 10 | cam_data | Input | 8-bit | Dữ liệu pixel từ camera |
-| 11 | color_sel | Input | 2-bit | Chọn màu mục tiêu (dự phòng cho mở rộng sau) |
-| 12 | final_x_center | Output | 10-bit | Tọa độ X tâm vật thể |
-| 13 | final_y_center | Output | 10-bit | Tọa độ Y tâm vật thể |
-| 14 | final_object_valid | Output | 1-bit | Báo hiệu đã phát hiện vật thể hợp lệ |
-| 15 | final_error_flag | Output | 1-bit | Báo hiệu vật thể ra khỏi vùng an toàn |
-| 16 | vga_hsync | Output | 1-bit | Tín hiệu đồng bộ ngang VGA |
-| 17 | vga_vsync | Output | 1-bit | Tín hiệu đồng bộ dọc VGA |
-| 18 | vga_rgb | Output | 16-bit | Dữ liệu màu RGB565 xuất ra VGA (hiện gán cứng `0`) |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | sys_clk | Input | 1-bit | System clock (25MHz or 48MHz) |
+| 2 | sys_rst | Input | 1-bit | System reset (active-high) |
+| 3 | cam_xclk | Output | 1-bit | Clock supplied to the camera (24MHz) |
+| 4 | cam_sioc | Output | 1-bit | SCCB/I2C clock |
+| 5 | cam_siod | Inout | 1-bit | SCCB/I2C data |
+| 6 | cam_pclk | Input | 1-bit | Pixel clock returned from the camera |
+| 7 | cam_rst | Input | 1-bit | Camera reset pin |
+| 8 | cam_vsync | Input | 1-bit | Frame sync |
+| 9 | cam_href | Input | 1-bit | Line sync |
+| 10 | cam_data | Input | 8-bit | Pixel data from the camera |
+| 11 | color_sel | Input | 2-bit | Target color selection (reserved for future extension) |
+| 12 | final_x_center | Output | 10-bit | X coordinate of the object's center |
+| 13 | final_y_center | Output | 10-bit | Y coordinate of the object's center |
+| 14 | final_object_valid | Output | 1-bit | Indicates a valid object has been detected |
+| 15 | final_error_flag | Output | 1-bit | Indicates the object has left the safe zone |
+| 16 | vga_hsync | Output | 1-bit | VGA horizontal sync signal |
+| 17 | vga_vsync | Output | 1-bit | VGA vertical sync signal |
+| 18 | vga_rgb | Output | 16-bit | RGB565 color data output to VGA (currently hard-wired to `0`) |
 
 **Parameters:** `IMG_WIDTH = 640`, `IMG_HEIGHT = 480`
 
 ## 5.2 ov7670_rgb565_cdc
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | cam_pclk | Input | 1-bit | Xung pixel miền camera |
-| 2 | cam_rst | Input | 1-bit | Reset miền camera |
-| 3 | cam_vsync | Input | 1-bit | Đồng bộ khung hình từ camera |
-| 4 | cam_href | Input | 1-bit | Đồng bộ hàng từ camera |
-| 5 | cam_data | Input | 8-bit | Byte dữ liệu từ camera |
-| 6 | cam_fifo_full | Output | 1-bit | Báo FIFO đầy (miền camera) |
-| 7 | cam_overflow_sticky | Output | 1-bit | Cờ tràn FIFO (miền camera, sticky) |
-| 8 | sys_clk | Input | 1-bit | Xung nhịp hệ thống |
-| 9 | sys_rst | Input | 1-bit | Reset miền hệ thống |
-| 10 | sys_rd_en | Input | 1-bit | Cho phép đọc FIFO |
-| 11 | sys_pixel | Output | 16-bit | Pixel RGB565 đã đồng bộ về `sys_clk` |
-| 12 | sys_pixel_valid | Output | 1-bit | Báo pixel hợp lệ |
-| 13 | sys_frame_start | Output | 1-bit | Báo bắt đầu khung hình mới |
-| 14 | sys_line_start | Output | 1-bit | Báo bắt đầu hàng mới |
-| 15 | sys_fifo_empty | Output | 1-bit | Báo FIFO rỗng (miền hệ thống) |
-| 16 | sys_overflow_sticky | Output | 1-bit | Cờ tràn FIFO (miền hệ thống, sticky) |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | cam_pclk | Input | 1-bit | Pixel clock, camera domain |
+| 2 | cam_rst | Input | 1-bit | Reset, camera domain |
+| 3 | cam_vsync | Input | 1-bit | Frame sync from the camera |
+| 4 | cam_href | Input | 1-bit | Line sync from the camera |
+| 5 | cam_data | Input | 8-bit | Data byte from the camera |
+| 6 | cam_fifo_full | Output | 1-bit | FIFO full flag (camera domain) |
+| 7 | cam_overflow_sticky | Output | 1-bit | Overflow flag (camera domain, sticky) |
+| 8 | sys_clk | Input | 1-bit | System clock |
+| 9 | sys_rst | Input | 1-bit | Reset, system domain |
+| 10 | sys_rd_en | Input | 1-bit | FIFO read enable |
+| 11 | sys_pixel | Output | 16-bit | RGB565 pixel synchronized to `sys_clk` |
+| 12 | sys_pixel_valid | Output | 1-bit | Indicates a valid pixel |
+| 13 | sys_frame_start | Output | 1-bit | Indicates the start of a new frame |
+| 14 | sys_line_start | Output | 1-bit | Indicates the start of a new line |
+| 15 | sys_fifo_empty | Output | 1-bit | FIFO empty flag (system domain) |
+| 16 | sys_overflow_sticky | Output | 1-bit | Overflow flag (system domain, sticky) |
 
-**Parameters:** `FIFO_ADDR_WIDTH` (mặc định 5, `system_top` dùng 10), `VSYNC_ACTIVE_HIGH`
+**Parameters:** `FIFO_ADDR_WIDTH` (default 5, `system_top` uses 10), `VSYNC_ACTIVE_HIGH`
 
 ## 5.3 async_fifo_gray
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | wr_clk / wr_rst | Input | 1-bit | Xung nhịp & reset miền ghi |
-| 2 | wr_en | Input | 1-bit | Cho phép ghi |
-| 3 | wr_data | Input | DATA_WIDTH-bit | Dữ liệu ghi vào FIFO |
-| 4 | wr_full | Output | 1-bit | FIFO đầy |
-| 5 | wr_overflow | Output | 1-bit | Cờ tràn khi ghi |
-| 6 | rd_clk / rd_rst | Input | 1-bit | Xung nhịp & reset miền đọc |
-| 7 | rd_en | Input | 1-bit | Cho phép đọc |
-| 8 | rd_data | Output | DATA_WIDTH-bit | Dữ liệu đọc ra |
-| 9 | rd_empty | Output | 1-bit | FIFO rỗng |
-| 10 | rd_underflow | Output | 1-bit | Cờ cạn khi đọc |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | wr_clk / wr_rst | Input | 1-bit | Write-side clock & reset |
+| 2 | wr_en | Input | 1-bit | Write enable |
+| 3 | wr_data | Input | DATA_WIDTH-bit | Data written into the FIFO |
+| 4 | wr_full | Output | 1-bit | FIFO full |
+| 5 | wr_overflow | Output | 1-bit | Overflow flag on write |
+| 6 | rd_clk / rd_rst | Input | 1-bit | Read-side clock & reset |
+| 7 | rd_en | Input | 1-bit | Read enable |
+| 8 | rd_data | Output | DATA_WIDTH-bit | Data read out |
+| 9 | rd_empty | Output | 1-bit | FIFO empty |
+| 10 | rd_underflow | Output | 1-bit | Underflow flag on read |
 
-**Parameters:** `DATA_WIDTH = 18` (mặc định), `ADDR_WIDTH = 4` (mặc định) — con trỏ đọc/ghi truyền chéo miền dưới dạng Gray code qua 2 tầng flip-flop để tránh metastability.
+**Parameters:** `DATA_WIDTH = 18` (default), `ADDR_WIDTH = 4` (default) — read/write pointers cross clock domains as Gray code through two flip-flop stages to avoid metastability.
 
 ## 5.4 rgb565_to_hsv_threshold
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | clk | Input | 1-bit | Xung nhịp hệ thống |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | clk | Input | 1-bit | System clock |
 | 2 | rst | Input | 1-bit | Reset (active-high) |
-| 3 | rgb565 | Input | 16-bit | Pixel đầu vào định dạng RGB565 |
-| 4 | pixel_valid | Input | 1-bit | Báo pixel đầu vào hợp lệ |
-| 5 | hue | Output | 8-bit | Giá trị Hue tính được |
-| 6 | sat | Output | 8-bit | Giá trị Saturation tính được |
-| 7 | val | Output | 8-bit | Giá trị Value (độ sáng) tính được |
-| 8 | mask | Output | 1-bit | `1` nếu pixel nằm trong ngưỡng màu mục tiêu |
-| 9 | mask_valid | Output | 1-bit | Báo kết quả `mask` hợp lệ |
+| 3 | rgb565 | Input | 16-bit | Input pixel in RGB565 format |
+| 4 | pixel_valid | Input | 1-bit | Indicates a valid input pixel |
+| 5 | hue | Output | 8-bit | Computed Hue value |
+| 6 | sat | Output | 8-bit | Computed Saturation value |
+| 7 | val | Output | 8-bit | Computed Value (brightness) |
+| 8 | mask | Output | 1-bit | `1` if the pixel falls within the target color threshold |
+| 9 | mask_valid | Output | 1-bit | Indicates the `mask` result is valid |
 
-**Parameters:** `H_MIN/H_MAX`, `S_MIN/S_MAX`, `V_MIN/V_MAX` — ngưỡng màu HSV để xác định vật thể mục tiêu.
+**Parameters:** `H_MIN/H_MAX`, `S_MIN/S_MAX`, `V_MIN/V_MAX` — HSV thresholds defining the target color.
 
 ## 5.5 xy_counter
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | clk | Input | 1-bit | Xung nhịp hệ thống |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | clk | Input | 1-bit | System clock |
 | 2 | rst | Input | 1-bit | Reset (active-high) |
-| 3 | pixel_valid | Input | 1-bit | Xung nhịp đếm (mỗi pixel hợp lệ) |
-| 4 | frame_start | Input | 1-bit | Reset bộ đếm về (0,0) khi có khung hình mới |
-| 5 | x_cnt | Output | 10-bit | Tọa độ X hiện tại (0–639) |
-| 6 | y_cnt | Output | 10-bit | Tọa độ Y hiện tại (0–479) |
+| 3 | pixel_valid | Input | 1-bit | Counting tick (one per valid pixel) |
+| 4 | frame_start | Input | 1-bit | Resets the counter back to (0,0) on a new frame |
+| 5 | x_cnt | Output | 10-bit | Current X coordinate (0–639) |
+| 6 | y_cnt | Output | 10-bit | Current Y coordinate (0–479) |
 
 ## 5.6 bounding_box
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | clk / rst | Input | 1-bit | Xung nhịp & reset |
-| 2 | frame_start | Input | 1-bit | Reset khung bao về giá trị biên khi bắt đầu khung mới |
-| 3 | pixel_valid | Input | 1-bit | Báo pixel hợp lệ |
-| 4 | object_pixel | Input | 1-bit | Pixel hiện tại có thuộc vật thể hay không (= `mask`) |
-| 5 | x_cnt, y_cnt | Input | 10-bit | Tọa độ pixel hiện tại |
-| 6 | xmin, xmax, ymin, ymax | Output | 10-bit | Tọa độ biên khung bao vật thể |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | clk / rst | Input | 1-bit | Clock & reset |
+| 2 | frame_start | Input | 1-bit | Resets the bounding box to its edge values on a new frame |
+| 3 | pixel_valid | Input | 1-bit | Indicates a valid pixel |
+| 4 | object_pixel | Input | 1-bit | Whether the current pixel belongs to the object (= `mask`) |
+| 5 | x_cnt, y_cnt | Input | 10-bit | Current pixel coordinates |
+| 6 | xmin, xmax, ymin, ymax | Output | 10-bit | Object bounding-box coordinates |
 
 ## 5.7 center_calc
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | xmin, xmax, ymin, ymax | Input | 10-bit | Tọa độ khung bao |
-| 2 | x_center, y_center | Output | 10-bit | Tọa độ tâm = trung bình cộng (`(min+max)>>1`) |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | xmin, xmax, ymin, ymax | Input | 10-bit | Bounding-box coordinates |
+| 2 | x_center, y_center | Output | 10-bit | Center coordinates = average (`(min+max)>>1`) |
 
 ## 5.8 safe_zone
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | x_center, y_center | Input | 10-bit | Tọa độ tâm vật thể |
-| 2 | error_flag | Output | 1-bit | `1` nếu tâm nằm ngoài vùng an toàn 200x200 pixel ở giữa khung hình (x: 220–420, y: 140–340) |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | x_center, y_center | Input | 10-bit | Object's center coordinates |
+| 2 | error_flag | Output | 1-bit | `1` if the center lies outside the 200x200-pixel safe area at the middle of the frame (x: 220–420, y: 140–340) |
 
 ## 5.9 ov7670_configurator
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | clk / rst | Input | 1-bit | Xung nhịp & reset |
-| 2 | sioc | Output | 1-bit | Xung nhịp SCCB |
-| 3 | siod | Inout | 1-bit | Dữ liệu SCCB |
-| 4 | config_done | Output | 1-bit | Báo đã nạp xong toàn bộ cấu hình |
-| 5 | config_busy | Output | 1-bit | Báo đang trong quá trình nạp |
-| 6 | ack_error_sticky | Output | 1-bit | Cờ báo lỗi ACK (sticky) |
-| 7 | rom_index_debug | Output | 8-bit | Chỉ số bản ghi ROM hiện tại (phục vụ debug) |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | clk / rst | Input | 1-bit | Clock & reset |
+| 2 | sioc | Output | 1-bit | SCCB clock |
+| 3 | siod | Inout | 1-bit | SCCB data |
+| 4 | config_done | Output | 1-bit | Indicates the full configuration sequence is complete |
+| 5 | config_busy | Output | 1-bit | Indicates configuration is in progress |
+| 6 | ack_error_sticky | Output | 1-bit | ACK error flag (sticky) |
+| 7 | rom_index_debug | Output | 8-bit | Current ROM index (for debugging) |
 
 **Parameters:** `CLK_HZ`, `SCCB_HZ`, `STARTUP_DELAY_CYCLES`, `INTER_WRITE_DELAY_CYCLES`, `RESET_DELAY_CYCLES`
 
 ## 5.10 vga_controller
 
-| # | Gate | Type | Bit-width | Mô tả |
-|---|------|------|-----------|-------|
-| 1 | vga_clk | Input | 1-bit | Xung nhịp VGA (chuẩn 25.175MHz cho 640x480) |
+| # | Gate | Type | Bit-width | Description |
+|---|------|------|-----------|--------------|
+| 1 | vga_clk | Input | 1-bit | VGA clock (standard 25.175MHz for 640x480) |
 | 2 | rst | Input | 1-bit | Reset (active-high) |
-| 3 | vga_hsync | Output | 1-bit | Tín hiệu đồng bộ ngang |
-| 4 | vga_vsync | Output | 1-bit | Tín hiệu đồng bộ dọc |
-| 5 | vga_blank | Output | 1-bit | Báo vùng blank (ngang/dọc) |
-| 6 | pixel_x, pixel_y | Output | 11-bit | Tọa độ quét hiện tại trên màn hình |
+| 3 | vga_hsync | Output | 1-bit | Horizontal sync signal |
+| 4 | vga_vsync | Output | 1-bit | Vertical sync signal |
+| 5 | vga_blank | Output | 1-bit | Blanking indicator (horizontal/vertical) |
+| 6 | pixel_x, pixel_y | Output | 11-bit | Current scan coordinates on screen |
 
 ---
 
 # 6. Key Parameters
 
-| Tham số | Module | Giá trị mặc định | Ý nghĩa |
-|---------|--------|-------------------|---------|
-| IMG_WIDTH / IMG_HEIGHT | system_top, tb_system_top | 640 / 480 | Độ phân giải khung hình chuẩn VGA |
-| CLK_IN_HZ | camera_xclk_24m | 48,000,000 | Xung nhịp đầu vào để chia ra XCLK 24MHz cho camera |
-| CLK_HZ / SCCB_HZ | ov7670_configurator | 48,000,000 / 100,000 | Xung hệ thống và tốc độ SCCB khi cấu hình camera |
-| H_MIN/H_MAX, S_MIN/S_MAX, V_MIN/V_MAX | rgb565_to_hsv_threshold | H: 0–10, S: 80–255, V: 50–255 | Ngưỡng màu HSV mặc định để nhận diện vật thể (tông đỏ) |
-| FIFO_ADDR_WIDTH | ov7670_rgb565_cdc | 5 (mặc định) / 10 (dùng trong system_top) | Độ sâu FIFO CDC, tăng lên khi mô phỏng để tránh tràn |
-| Safe Zone bounds | safe_zone | x: 220–420, y: 140–340 | Vùng an toàn 200x200 pixel ở giữa khung hình |
+| Parameter | Module | Default Value | Meaning |
+|-----------|--------|----------------|---------|
+| IMG_WIDTH / IMG_HEIGHT | system_top, tb_system_top | 640 / 480 | Standard VGA frame resolution |
+| CLK_IN_HZ | camera_xclk_24m | 48,000,000 | Input clock used to derive the 24MHz camera XCLK |
+| CLK_HZ / SCCB_HZ | ov7670_configurator | 48,000,000 / 100,000 | System clock and SCCB speed used during camera configuration |
+| H_MIN/H_MAX, S_MIN/S_MAX, V_MIN/V_MAX | rgb565_to_hsv_threshold | H: 0–10, S: 80–255, V: 50–255 | Default HSV thresholds for detecting the target object (red hue) |
+| FIFO_ADDR_WIDTH | ov7670_rgb565_cdc | 5 (default) / 10 (used in system_top) | CDC FIFO depth, increased in simulation to avoid overflow |
+| Safe Zone bounds | safe_zone | x: 220–420, y: 140–340 | 200x200-pixel safe area at the center of the frame |
 
 ---
 
@@ -316,49 +316,49 @@ HSV -.optional.-> VGA["vga_controller"]
 
 ## 7.1 Configuration Stage
 
-- `camera_xclk_24m` cấp xung 24MHz cho camera OV7670 (chia đôi từ `sys_clk` 48MHz, hoặc pass-through nếu `sys_clk` đã là 24MHz).
-- `ov7670_configurator` đọc tuần tự 133 cặp (địa chỉ thanh ghi, giá trị) từ `ov7670_init_rom`, gửi từng cặp qua `ov7670_sccb_master` (giao thức SCCB/I2C, địa chỉ ghi `8'h42`) để đưa camera vào chế độ VGA 640x480, RGB565, tắt scaling.
-- Cờ `config_done` báo khi toàn bộ 133 lệnh đã được ghi xong.
+- `camera_xclk_24m` supplies a 24MHz clock to the OV7670 camera (divided by 2 from a 48MHz `sys_clk`, or passed through if `sys_clk` is already 24MHz).
+- `ov7670_configurator` sequentially reads 133 (register address, value) pairs from `ov7670_init_rom` and writes each pair through `ov7670_sccb_master` (SCCB/I2C protocol, write address `8'h42`) to put the camera into VGA 640x480, RGB565 mode with scaling disabled.
+- The `config_done` flag is raised once all 133 commands have been written.
 
 ## 7.2 Capture & Clock Domain Crossing
 
-- Camera xuất pixel theo miền `cam_pclk`; `ov7670_rgb565_cdc` ghép 2 byte liên tiếp thành 1 pixel RGB565 16-bit, gắn thêm cờ `frame_start`/`line_start`, rồi ghi vào `async_fifo_gray`.
-- `async_fifo_gray` dùng con trỏ Gray-code truyền qua 2 tầng flip-flop để đưa dữ liệu an toàn sang miền `sys_clk`, tránh lỗi metastability giữa 2 domain không liên quan.
+- The camera outputs pixels in the `cam_pclk` domain; `ov7670_rgb565_cdc` combines two consecutive bytes into one 16-bit RGB565 pixel, attaches `frame_start`/`line_start` flags, and writes them into `async_fifo_gray`.
+- `async_fifo_gray` uses Gray-code pointers passed through two flip-flop stages to safely transfer data to the `sys_clk` domain, avoiding metastability between two unrelated clock domains.
 
 ## 7.3 HSV Color Filtering
 
-- `color_tracking_hsv_stage` nhận `sys_pixel` hợp lệ, gọi `rgb565_to_hsv_threshold` để tách kênh R8/G8/B8 từ RGB565, tính toán Max/Min/Delta theo pipeline, suy ra H/S/V rồi so với ngưỡng cấu hình để xuất `color_mask`.
+- `color_tracking_hsv_stage` receives a valid `sys_pixel` and calls `rgb565_to_hsv_threshold`, which splits the R8/G8/B8 channels from RGB565, computes Max/Min/Delta through a pipeline, derives H/S/V, and compares them against the configured thresholds to output `color_mask`.
 
 ## 7.4 Tracking (XY Counter → Bounding Box → Center)
 
-- `xy_counter` đếm tọa độ (x, y) theo từng pixel hợp lệ, reset về (0,0) khi có `frame_start` mới.
-- `bounding_box` mở rộng dần khung bao (`xmin/xmax/ymin/ymax`) mỗi khi gặp pixel có `object_pixel = 1`.
-- `center_calc` tính tọa độ tâm = trung bình cộng của khung bao.
-- `system_top` chốt (latch) tọa độ tâm cuối cùng vào thanh ghi mỗi khi có `frame_start` mới, đồng thời đặt cờ `final_object_valid` nếu khung bao hợp lệ (`xmax >= xmin`, `ymax >= ymin`, `xmax != 0`).
+- `xy_counter` counts the (x, y) coordinate for each valid pixel, resetting to (0,0) whenever a new `frame_start` occurs.
+- `bounding_box` progressively expands the box (`xmin/xmax/ymin/ymax`) each time it sees a pixel with `object_pixel = 1`.
+- `center_calc` computes the center coordinate as the average of the bounding-box edges.
+- `system_top` latches the final center coordinates into registers every time a new `frame_start` arrives, and sets `final_object_valid` if the bounding box is valid (`xmax >= xmin`, `ymax >= ymin`, `xmax != 0`).
 
 ## 7.5 Safe Zone Check & Output
 
-- `safe_zone` so tọa độ tâm đã chốt với vùng an toàn 200x200 pixel (x: 220–420, y: 140–340); nếu nằm ngoài, `final_error_flag` được kích hoạt.
-- Kết quả cuối cùng (`final_x_center`, `final_y_center`, `final_object_valid`, `final_error_flag`) được xuất ra ngoài `system_top` để phục vụ hiển thị hoặc điều khiển tiếp theo.
+- `safe_zone` compares the latched center coordinates against the 200x200-pixel safe area (x: 220–420, y: 140–340); if the object is outside it, `final_error_flag` is raised.
+- The final results (`final_x_center`, `final_y_center`, `final_object_valid`, `final_error_flag`) are output from `system_top` for display or further control logic.
 
 ## 7.6 VGA Output (Optional)
 
-- `vga_controller` sinh tín hiệu `hsync`/`vsync` chuẩn 640x480@60Hz và tọa độ quét `pixel_x`/`pixel_y`; hiện tại `vga_rgb` được gán cứng giá trị `0` (màu đen) do hệ thống chưa tích hợp bộ nhớ khung hình để hiển thị ảnh đã xử lý.
+- `vga_controller` generates standard 640x480@60Hz `hsync`/`vsync` signals along with scan coordinates `pixel_x`/`pixel_y`; currently `vga_rgb` is hard-wired to `0` (black) because the system does not yet include a frame buffer to display the processed image.
 
 ```mermaid
 flowchart TD
 
-Start([Bắt đầu])
-Config[Cấu hình camera qua SCCB]
-Capture[Thu nhận pixel - cam_pclk domain]
-CDC[Chuyển miền xung nhịp qua FIFO Gray-code]
-HSV[Lọc ngưỡng màu HSV]
-XY[Đếm tọa độ pixel]
-BBox[Cập nhật khung bao vật thể]
-Center[Tính tọa độ tâm]
-Latch[Chốt tọa độ khi có frame_start mới]
-Safe[Kiểm tra vùng an toàn]
-Output([Xuất tọa độ tâm + cờ báo])
+Start([Start])
+Config[Configure camera over SCCB]
+Capture[Capture pixels - cam_pclk domain]
+CDC[Cross clock domains via Gray-code FIFO]
+HSV[Apply HSV color threshold]
+XY[Count pixel coordinates]
+BBox[Update object bounding box]
+Center[Compute center coordinates]
+Latch[Latch coordinates on new frame_start]
+Safe[Check safe zone]
+Output([Output center coordinates + flags])
 
 Start --> Config
 Config --> Capture
@@ -378,21 +378,21 @@ Safe --> Output
 
 ## 8.1 Testbench Workflow (`tb_system_top.v`)
 
-1. Khởi tạo `sys_clk` (50MHz, chu kỳ 20ns) và `cam_pclk` (~24MHz, chu kỳ ~41.6ns).
-2. Đọc file `input/image_rgb.txt` (định dạng hex, mỗi dòng 1 pixel RGB565) vào mảng nhớ `image_mem` bằng `$readmemh`. File này cần đủ `640 x 480 = 307200` dòng.
-3. Sau khi nhả reset, testbench tạo 1 khung hình (Frame 1): với mỗi pixel, kéo `cam_href = 1` và đẩy lần lượt byte cao rồi byte thấp của pixel qua `cam_data` theo từng cạnh xuống của `cam_pclk`.
-4. Tạo thêm Frame 2 (rút gọn) chỉ để phát tín hiệu `frame_start` mới, giúp chốt (latch) tọa độ tâm đã tính từ Frame 1 ra các cổng `final_*`.
-5. In kết quả ra console: tọa độ tâm (`final_x_center`, `final_y_center`) và trạng thái an toàn (`final_error_flag`) nếu `final_object_valid = 1`; nếu không, báo "KHÔNG TÌM THẤY VẬT THỂ".
+1. Initialize `sys_clk` (50MHz, 20ns period) and `cam_pclk` (~24MHz, ~41.6ns period).
+2. Read the file `input/image_rgb.txt` (hex format, one RGB565 pixel per line) into the `image_mem` array using `$readmemh`. This file must contain exactly `640 x 480 = 307,200` lines.
+3. After releasing reset, the testbench streams one frame (Frame 1): for each pixel, it drives `cam_href = 1` and pushes the high byte then the low byte of the pixel onto `cam_data` on each falling edge of `cam_pclk`.
+4. A second, shortened frame (Frame 2) is generated solely to trigger a new `frame_start` pulse, which latches the center coordinates computed from Frame 1 onto the `final_*` output ports.
+5. The console prints the final result: the center coordinates (`final_x_center`, `final_y_center`) and the safe-zone status (`final_error_flag`) if `final_object_valid = 1`; otherwise it prints "NO OBJECT FOUND".
 
 ## 8.2 Picture Convertor Scripts
 
-- **`image_process.py`**: đọc ảnh mẫu (jpg/png) trong `Picture Convertor/input/`, resize về đúng 640x480, chuyển từng pixel sang RGB565 và ghi ra `Picture Convertor/output/image_rgb.txt` — chính là file được `tb_system_top.v` đọc vào.
-- **`restore_image.py`**: đọc lại dữ liệu kết quả mô phỏng (hoặc dữ liệu ảnh RGB565) để dựng thành ảnh hiển thị được, phục vụ kiểm chứng trực quan.
+- **`image_process.py`**: reads a sample image (jpg/png) from `Picture Convertor/input/`, resizes it to exactly 640x480, converts each pixel to RGB565, and writes the result to `Picture Convertor/output/image_rgb.txt` — the same file loaded by `tb_system_top.v`.
+- **`restore_image.py`**: reads back simulation output (or RGB565 image data) and reconstructs a viewable image for visual verification.
 
 ```mermaid
 flowchart LR
 
-InputImg[Ảnh mẫu jpg/png]
+InputImg[Sample image jpg/png]
 -->
 Process[image_process.py]
 -->
@@ -400,27 +400,27 @@ Vector["output/image_rgb.txt (RGB565)"]
 -->
 TB[tb_system_top.v - ModelSim]
 -->
-Result[Console log: tọa độ tâm + safe zone]
-Vector -.tham chiếu.-> Restore[restore_image.py]
-Restore --> ViewImg[Ảnh khôi phục để đối chiếu]
+Result[Console log: center coordinates + safe zone]
+Vector -.reference.-> Restore[restore_image.py]
+Restore --> ViewImg[Reconstructed image for comparison]
 ```
 
 ---
 
 # 9. Notes & Known Limitations
 
-- `vga_rgb` trong `system_top` hiện đang gán cứng `16'h0000` (đen) vì hệ thống chưa có bộ nhớ khung hình (frame buffer) để lưu và xuất ảnh đã xử lý lên VGA — đây là phần "tùy chọn hiển thị sau này" theo comment trong code.
-- `camera_xclk_24m` chỉ hỗ trợ `CLK_IN_HZ = 24 MHz` (pass-through) hoặc `48 MHz` (chia 2); nếu board thực tế dùng clock khác (ví dụ Tang Nano 9K 27MHz), cần thêm Gowin PLL để tạo ra 24MHz hoặc 48MHz trước khi đưa vào module này.
-- `color_sel` ở cổng `system_top` hiện chưa được sử dụng trong logic xử lý — được để dự phòng cho việc chọn màu mục tiêu động trong tương lai (hiện ngưỡng HSV đang cố định qua parameter).
-- Cổng `ack_error_sticky` của `ov7670_sccb_master`/`ov7670_configurator` chỉ mang tính cảnh báo (sticky flag), không tự động retry khi cấu hình camera thất bại.
-- `FIFO_ADDR_WIDTH` được tăng lên 10 (thay vì mặc định 5) trong `system_top` để tăng độ sâu FIFO, tránh tràn dữ liệu khi mô phỏng.
-- Testbench cần file `input/image_rgb.txt` có đúng 307,200 dòng (640x480); nếu thiếu, `$readmemh` sẽ đọc không đủ dữ liệu hoặc lỗi mô phỏng.
+- `vga_rgb` in `system_top` is currently hard-wired to `16'h0000` (black) because the system does not yet have a frame buffer to store and display the processed image — this is the "optional display feature for later" noted in the code's comments.
+- `camera_xclk_24m` only supports `CLK_IN_HZ = 24 MHz` (pass-through) or `48 MHz` (divide-by-2); if the actual board clock differs (e.g., the Tang Nano 9K's 27MHz), a Gowin PLL is needed to generate 24MHz or 48MHz before feeding this module.
+- The `color_sel` port on `system_top` is currently unused in the processing logic — it is reserved for future dynamic target-color selection (the HSV thresholds are currently fixed via parameters).
+- The `ack_error_sticky` flag on `ov7670_sccb_master`/`ov7670_configurator` is informational only (a sticky flag) and does not automatically retry a failed camera write.
+- `FIFO_ADDR_WIDTH` is increased to 10 (instead of the default 5) in `system_top` to deepen the FIFO and avoid overflow during simulation.
+- The testbench requires `input/image_rgb.txt` to contain exactly 307,200 lines (640x480); if it has fewer, `$readmemh` will read incomplete data or the simulation will fail.
 
 ---
 
 # 10. Conclusion
 
-Hệ thống FPGA Color Tracking hiện thực hóa đầy đủ một pipeline bám bắt vật thể theo màu thời gian thực: từ cấu hình camera, thu nhận và đồng bộ hóa dữ liệu qua CDC, lọc ngưỡng màu HSV, đến tính toán khung bao, tọa độ tâm và kiểm tra vùng an toàn. Kiến trúc module hóa rõ ràng (mỗi khối RTL đảm nhiệm một chức năng độc lập, có thể mô phỏng riêng lẻ trong các thư mục `Simulation/*`) giúp thuận tiện cho việc kiểm thử từng phần trước khi tích hợp toàn hệ thống qua `system_top.v`. Phần xuất hình ảnh qua VGA hiện còn là hướng phát triển tiếp theo, cần bổ sung bộ nhớ khung hình để hiển thị kết quả xử lý trực quan trên màn hình thực tế.
+The FPGA Color Tracking system implements a complete real-time, color-based object-tracking pipeline: from camera configuration, pixel capture and clock-domain synchronization, through HSV color thresholding, to bounding-box tracking, center calculation, and safe-zone checking. The clear modular architecture — each RTL block handling one independent function, testable on its own in the `Simulation/*` subfolders — makes it convenient to verify each part before integrating the full system through `system_top.v`. VGA image output remains a future development direction, requiring a frame buffer to be added in order to display the processed result on an actual screen.
 
 ---
 
