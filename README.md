@@ -19,7 +19,7 @@ The repository also includes a set of Python scripts used to generate RGB565 tes
 - [8. Simulation](#8-simulation)
 - [9. Notes & Known Limitations](#9-notes--known-limitations)
 - [10. Conclusion](#10-conclusion)
-
+- [11. References](#11-References)
 ---
 
 # 2. Repository Structure
