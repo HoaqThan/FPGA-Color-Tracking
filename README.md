@@ -337,7 +337,7 @@ HSV -.optional.-> VGA["vga_controller"]
 - `safe_zone` compares the latched center coordinates against the 200x200-pixel safe area (x: 220–420, y: 140–340); if the object is outside it, `final_error_flag` is raised.
 - The final results (`final_x_center`, `final_y_center`, `final_object_valid`, `final_error_flag`) are output from `system_top` for display or further control logic.
 
-## 7.6 VGA Output (Optional)
+## 7.6 VGA Output  
 
 - `vga_controller` generates standard 640x480@60Hz `hsync`/`vsync` signals along with scan coordinates `pixel_x`/`pixel_y`; currently `vga_rgb` is hard-wired to `0` (black) because the system does not yet include a frame buffer to display the processed image.
 
@@ -361,8 +361,8 @@ Config --> Capture
 Capture --> CDC
 CDC --> HSV
 HSV --> XY
-XY --> BBox
-BBox --> Center
+XY --> BoundingBox
+BoundingBox --> Center
 Center --> Latch
 Latch --> Safe
 Safe --> Output
